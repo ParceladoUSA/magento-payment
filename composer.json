@@ -31,5 +31,6 @@
         "psr-4": {
             "Parceladousa\\Payment\\": ""
         }
-    }
+    },
+    "minimum-stability": "dev"
 }
