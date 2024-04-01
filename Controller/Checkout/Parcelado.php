@@ -80,6 +80,9 @@ class Parcelado implements \Magento\Framework\App\ActionInterface
         $model->setData(['id' => $parceladoOrderStatus->getId(), 'status' => $response['status']]);
         $model->save();
 
+        $collection = $model->getCollection();
+        $parceladoOrderStatus = $collection->addFieldToFilter('parcelado_order_id', ['eq' => $orderId])->getFirstItem();
+
         $order = $this->_orderRepository->get($parceladoOrderStatus->getOrderId());
 
         $resultRedirect = $this->_resultFactory->create(ResultFactory::TYPE_REDIRECT);
