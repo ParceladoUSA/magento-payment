@@ -9,7 +9,6 @@ Para o correto funcionamento do módulo, é necessário que seja selecionado se 
 
 
 ## Endpoints
-
 - Webhook para ser inserido no site do Parcelado API:<br>
   - Method: `POST`;
   - URL: `https://seusite.com/rest/V1/parcelado/payment/update`;
