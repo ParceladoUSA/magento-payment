@@ -1,7 +1,7 @@
 {
     "name": "parceladousa/magento-payment",
     "description": "ParceladoUSA - Payment for Adobe Commerce",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "require": {
         "php": "~7.3.0||~7.4.0||~8.1.0||~8.2.0",
         "magento/framework": "103.0.*",
