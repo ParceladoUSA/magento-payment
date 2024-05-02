@@ -5,8 +5,6 @@ namespace Parceladousa\Payment\Model\Api;
 use Parceladousa\Payment\Api\PaymentInterface;
 use Parceladousa\Payment\Model\Payment\ParceladoOrderStatusFactory;
 use Magento\Framework\Serialize\Serializer\Json as JsonHelper;
-use Magento\Framework\HTTP\ZendClient;
-use Magento\Framework\HTTP\ZendClientFactory;
 use Magento\Store\Model\StoreManagerInterface;
 use Parceladousa\Payment\Helper\Data as PaymentHelper;
 use Parceladousa\Payment\Model\Payment\ParceladoOrderStatus;
@@ -27,9 +25,6 @@ class Payment implements PaymentInterface
     /** @var StoreManagerInterface */
     private $_storeManager;
 
-    /** @var ZendClientFactory */
-    private $_httpClientFactory;
-
     /** @var PaymentHelper */
     private $_helper;
 
@@ -41,22 +36,20 @@ class Payment implements PaymentInterface
      *
      * @param ParceladoOrderStatusFactory $parceladoStatusFactory
      * @param JsonHelper $jsonHelper
-     * @param ZendClientFactory $httpClientFactory
      * @param StoreManagerInterface $storeManager
      * @param PaymentHelper $helper
      * @param OrderRepositoryInterface $orderRepositoryInterface
      */
     public function __construct(
         ParceladoOrderStatusFactory $parceladoStatusFactory,
-        JsonHelper $jsonHelper,
-        ZendClientFactory $httpClientFactory,
-        StoreManagerInterface $storeManager,
-        PaymentHelper $helper,
-        OrderRepositoryInterface $orderRepositoryInterface
-    ) {
+        JsonHelper                  $jsonHelper,
+        StoreManagerInterface       $storeManager,
+        PaymentHelper               $helper,
+        OrderRepositoryInterface    $orderRepositoryInterface
+    )
+    {
         $this->_parceladoStatusFactory = $parceladoStatusFactory;
         $this->_jsonHelper = $jsonHelper;
-        $this->_httpClientFactory = $httpClientFactory;
         $this->_storeManager = $storeManager;
         $this->_helper = $helper;
         $this->_orderRepositoryInterface = $orderRepositoryInterface;
@@ -74,14 +67,10 @@ class Payment implements PaymentInterface
         $billingData = $this->_jsonHelper->unserialize($billingData);
         $totals = $this->_jsonHelper->unserialize($totals);
 
-        try {
-            $client = $this->_httpClientFactory->create();
-
-            $url = $this->_helper->getParceladoRequestUrl();
-
-            $accessToken = $this->_helper->getParceladoAccessToken();
+        $accessToken = $this->_helper->getParceladoAccessToken();
+        if (!empty($accessToken)) {
             $currency = $this->_storeManager->getStore()->getCurrentCurrencyCode();
-            $currency = (empty($currency) || ($currency != 'USD' || $currency != 'BRL'))? 'USD' : $currency;
+            $currency = (empty($currency) || ($currency != 'USD' || $currency != 'BRL')) ? 'USD' : $currency;
             $rawData = ['amount' => $totals['grand_total'], 'currency' => $currency];
 
             $clientData = [
@@ -98,46 +87,44 @@ class Payment implements PaymentInterface
             ];
 
             $rawData['client'] = $clientData;
-
             $rawData['callback'] = $this->_storeManager->getStore()->getBaseUrl() . 'payment/checkout/parcelado';
 
             $headers = [
-                'Content-Type' => 'application/json',
-                'Authorization' => "Bearer $accessToken"
+                'Content-Type:application/json',
+                "Authorization:Bearer $accessToken"
             ];
 
-            $client->setUri($url . 'paymentapi/order');
-            $client->setConfig(['maxredirects' => 0, 'timeout' => 30]);
-            $client->setHeaders($headers);
-            $client->setRawData(json_encode($rawData), 'application/json');
-            $client->setMethod(ZendClient::POST);
+            $request = $this->_helper->curl('POST', 'paymentapi/order', $headers, json_encode($rawData));
 
-            $responseBody = $client->request()->getBody();
+            if($request->http == 200) {
+                $response = $request->body;
 
-            $response = json_decode($responseBody, true);
+                $model = $this->_parceladoStatusFactory->create();
 
-            $model = $this->_parceladoStatusFactory->create();
+                $collection = $model->getCollection();
 
-            $collection = $model->getCollection();
-
-            $parceladoOrderStatus = $collection->addFieldToFilter('customer_id', ['eq' => $customerData['id']])
-                ->addFieldToFilter('parcelado_order_id', ['eq' => 'PARCELADOAPI'])
-                ->setOrder('created_at', 'DESC')
-                ->getFirstItem();
+                $parceladoOrderStatus = $collection->addFieldToFilter('customer_id', ['eq' => $customerData['id']])
+                    ->addFieldToFilter('parcelado_order_id', ['eq' => 'PARCELADOAPI'])
+                    ->setOrder('created_at', 'DESC')
+                    ->getFirstItem();
 
 
-            $model->setData([
-                'id' => $parceladoOrderStatus->getId(),
-                'parcelado_order_id' => $response['data']['orderId'],
-                'status' => "open"
-            ]);
-            $model->save();
+                $model->setData([
+                    'id' => $parceladoOrderStatus->getId(),
+                    'parcelado_order_id' => $response->data->orderId,
+                    'status' => "open"
+                ]);
+                $model->save();
 
-            return json_encode(['url' => $response['data']['url'], 'parcelado_order_id' => $response['data']['orderId']]);
-        } catch (\Exception $e) {
-            $this->_helpererror("Error on generate url".$e->getMessage());
+                return json_encode(['url' => $response->data->url, 'parcelado_order_id' => $response->data->orderId]);
+            }else {
+                $this->_helper->logger->error('Error on generate url');
+                return '';
+            }
+        } else {
+            $this->_helper->logger->error("Error on recovery access token to generate url");
+            return '';
         }
-        return '';
     }
 
     /**
@@ -159,7 +146,7 @@ class Payment implements PaymentInterface
             $model->setData(['id' => $parceladoOrderStatus->getId(), 'status' => $status]);
             $model->save();
 
-            $this->_helper->logger->info("newHook ".json_encode([$orderId, $status]));
+            $this->_helper->logger->info("newHook " . json_encode([$orderId, $status]));
 
             if (!empty($parceladoOrderStatus->getOrderId())) {
 

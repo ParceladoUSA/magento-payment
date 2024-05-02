@@ -23,9 +23,6 @@ class Parcelado implements \Magento\Framework\App\ActionInterface
     /** @var ResultFactory */
     protected $_resultFactory;
 
-    /** @var ZendClientFactory */
-    private $_httpClientFactory;
-
     /** @var Http */
     protected $_http;
 
@@ -42,14 +39,12 @@ class Parcelado implements \Magento\Framework\App\ActionInterface
         ResultFactory $resultFactory,
         OrderRepositoryInterface $orderRepository,
         ParceladoOrderStatusFactory $parceladoStatusFactory,
-        ZendClientFactory $httpClientFactory,
         Data $helperData
     ) {
         $this->_http = $request;
         $this->_resultFactory = $resultFactory;
         $this->_orderRepository = $orderRepository;
         $this->_parceladoStatusFactory = $parceladoStatusFactory;
-        $this->_httpClientFactory = $httpClientFactory;
         $this->_helperData = $helperData;
     }
 
@@ -63,21 +58,14 @@ class Parcelado implements \Magento\Framework\App\ActionInterface
         $parceladoOrderStatus = $collection->addFieldToFilter('parcelado_order_id', ['eq' => $orderId])->getFirstItem();
 
         $accessToken = $this->_helperData->getParceladoAccessToken();
-        $client = $this->_httpClientFactory->create();
-        $url = $this->_helperData->getParceladoRequestUrl();
+
         $headers = [
-            'Content-Type' => 'application/json',
-            'Authorization' => "Bearer $accessToken"
+            'Content-Type:application/json',
+            "Authorization:Bearer $accessToken"
         ];
-
-        $client->setUri("{$url}paymentapi/order/{$orderId}");
-        $client->setConfig(['maxredirects' => 0, 'timeout' => 30]);
-        $client->setHeaders($headers);
-        $client->setMethod(ZendClient::GET);
-        $responseBody = $client->request()->getBody();
-        $response = json_decode($responseBody, true);
-
-        $model->setData(['id' => $parceladoOrderStatus->getId(), 'status' => $response['status']]);
+        $request = $this->_helperData->curl('GET', "paymentapi/order/{$orderId}", $headers);
+        $response = $request->body;
+        $model->setData(['id' => $parceladoOrderStatus->getId(), 'status' => $response->status]);
         $model->save();
 
         $collection = $model->getCollection();

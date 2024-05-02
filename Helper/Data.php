@@ -7,8 +7,6 @@ use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
-use Magento\Framework\HTTP\ZendClient;
-use Magento\Framework\HTTP\ZendClientFactory;
 use Parceladousa\Payment\Logger\Logger;
 
 class Data extends AbstractHelper
@@ -21,11 +19,6 @@ class Data extends AbstractHelper
 
     /** ACCESS TOKEN METHOD */
     const ACCESS_TOKEN_METHOD_URL = 'paymentapi/auth';
-
-    /** 
-     * @var ZendClientFactory 
-     */
-    protected $httpClientFactory;
 
     /**
      * @var StoreManagerInterface
@@ -47,18 +40,16 @@ class Data extends AbstractHelper
      *
      * @param StoreManagerInterface $storeManager
      * @param ScopeConfigInterface $scopeConfig
-     * @param ZendClientFactory $httpClientFactory
      * @param Logger $logger
      */
     public function __construct(
         StoreManagerInterface $storeManager,
-        ScopeConfigInterface $scopeConfig,
-        ZendClientFactory $httpClientFactory,
-        Logger $logger
-    ) {
+        ScopeConfigInterface  $scopeConfig,
+        Logger                $logger
+    )
+    {
         $this->storeManager = $storeManager;
         $this->scopeConfig = $scopeConfig;
-        $this->httpClientFactory = $httpClientFactory;
         $this->logger = $logger;
     }
 
@@ -105,7 +96,7 @@ class Data extends AbstractHelper
 
     /**
      * Return configured environment
-     * 
+     *
      * @return string
      */
     private function getEnvironment()
@@ -115,7 +106,7 @@ class Data extends AbstractHelper
 
     /**
      * Return Parcelado URL to send requests
-     * 
+     *
      * @return string
      */
     public function getParceladoRequestUrl()
@@ -133,32 +124,57 @@ class Data extends AbstractHelper
      *
      * @return string
      */
-    public function getParceladoAccessToken(): string
+    public function getParceladoAccessToken()
     {
-        try {
-            $client = $this->httpClientFactory->create();
+        $pubKey = $this->getConfigData('parcelado_payment', 'merchant_key');
+        $merchantCode = $this->getConfigData('parcelado_payment', 'merchant_id');
 
-            $url = $this->getParceladoRequestUrl();
-            $pubKey = $this->getConfigData('parcelado_payment', 'merchant_key');
-            $merchantCode = $this->getConfigData('parcelado_payment', 'merchant_id');
+        $rawData = ['pubKey' => $pubKey, 'merchantCode' => $merchantCode];
+        $headers = ['Content-Type:application/json'];
+        $request = $this->curl('POST', self::ACCESS_TOKEN_METHOD_URL, $headers, json_encode($rawData));
 
-            $rawData = ['pubKey' => $pubKey, 'merchantCode' => $merchantCode];
+        if ($request->http == 200) {
 
-            $headers = ['Content-Type' => 'application/json'];
+            return $request->body->token;
 
-            $client->setUri($url . self::ACCESS_TOKEN_METHOD_URL);
-            $client->setConfig(['maxredirects' => 0, 'timeout' => 30]);
-            $client->setHeaders($headers);
-            $client->setRawData(json_encode($rawData), 'application/json');
-            $client->setMethod(ZendClient::POST);
-
-            $response = $client->request();
-
-            $responseBody = json_decode($response->getBody());
-            
-            return $responseBody->token;
-        } catch (\Exception $e) {
-            $this->logger->error('Unable to get Parcelado API access token!' . $e->getMessage());
+        } else {
+            $this->logger->error('Unable to get Parcelado API access token!');
+            $this->logger->error(json_encode($rawData));
+            $this->logger->error(json_encode($request->http));
+            $this->logger->error(json_encode($request->body));
+            return null;
         }
+    }
+
+    public function curl($method, $endpoint, $headers = [], $postfilds = null)
+    {
+        $curl = curl_init();
+
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $this->getParceladoRequestUrl() . $endpoint,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => "",
+            CURLOPT_MAXREDIRS => 0,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => $method,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => $postfilds,
+        ));
+
+        $responseData = curl_exec($curl);
+        $response = new \stdClass();
+
+        if (curl_errno($curl)) {
+            $response->error = curl_error($curl);
+            return $this;
+        }
+
+        $response->http = curl_getinfo($curl)['http_code'];
+        $response->body = json_decode($responseData);
+        curl_close($curl);
+
+        return $response;
     }
 }
