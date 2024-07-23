@@ -45,7 +45,7 @@ define(
              * @returns {String}
              */
             getInstructions: function () {
-                return 'Você será redirecionado para o ambiente seguro da parcelado Pay';
+                return 'Você será redirecionado para o ambiente seguro da ParceladoUSA';
                 // return window.checkoutConfig.payment.instructions[this.item.method];
             },
 
@@ -54,7 +54,7 @@ define(
              * @returns {string|*}
              */
             getLogo: function () {
-                return 'https://parceladousa.com/logo/logobusiness.png?v=' + (new Date().getTime());
+                return 'https://parceladousa.com/ancoragem/theme/source/img/logo/logo-horizontal-blue-parcelado.png?v=' + (new Date().getTime());
             }
         });
     });

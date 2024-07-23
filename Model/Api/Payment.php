@@ -153,6 +153,11 @@ class Payment implements PaymentInterface
                 $order = $this->_orderRepositoryInterface->get($parceladoOrderStatus->getOrderId());
 
                 if ($status == ParceladoOrderStatus::STATUS_DELIVERED) {
+                    /** Adiciona Fatura ao pedido */
+                    $invoice = $order->prepareInvoice()->register();
+                    $invoice->setOrder($order);
+                    $invoice->addComment(__('Values transfered by ParceladoUSA'));
+                    $order->addRelatedObject($invoice);
                     $order->setStatus(Order::STATE_PROCESSING);
                     $order->setState(Order::STATE_PROCESSING);
                 } else if (in_array($status, ParceladoOrderStatus::CODES_STATUS_ABORTED)) {
