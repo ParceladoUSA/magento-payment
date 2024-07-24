@@ -163,6 +163,7 @@ class Payment implements PaymentInterface
                 } else if (in_array($status, ParceladoOrderStatus::CODES_STATUS_ABORTED)) {
                     $order->setStatus(Order::STATE_CANCELED);
                     $order->setState(Order::STATE_CANCELED);
+                    $order->addStatusHistoryComment(__('Transaction canceled or aborted by customer.'), Order::STATE_CANCELED);
                 }
 
                 $this->_orderRepositoryInterface->save($order);
