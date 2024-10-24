@@ -142,10 +142,10 @@ class Data extends AbstractHelper
     public function getStoreCurrencyCode()
     {
         if($this->getReferenceCurrency() == ReferenceCurrency::CURRENTCURRENCY) {
-            return $this->_storeManager->getStore()->getCurrentCurrencyCode();
+            return $this->storeManager->getStore()->getCurrentCurrencyCode();
         }
 
-        return $this->_storeManager->getStore()->getBaseCurrencyCode();
+        return $this->storeManager->getStore()->getBaseCurrencyCode();
     }
 
     /**
