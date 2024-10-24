@@ -77,7 +77,7 @@ class Parcelado implements \Magento\Framework\App\ActionInterface
 
         if (in_array($parceladoOrderStatus->getStatus(), ParceladoOrderStatus::CODES_STATUS_AUTHORIZED)) {
             $order->setStatus(ParceladoOrderStatus::STATUS_PENDING);
-            $order->setState(ParceladoOrderStatus::STATUS_PENDING);
+            $order->setState(Order::STATE_NEW);
             $order->addStatusHistoryComment(__('Transaction awaiting release.'), ParceladoOrderStatus::STATUS_PENDING);
             $order->save($order);
             $resultRedirect->setPath('checkout/onepage/success');
@@ -89,7 +89,7 @@ class Parcelado implements \Magento\Framework\App\ActionInterface
             $resultRedirect->setPath('sales/order/history');
         } else {
             $order->setStatus(ParceladoOrderStatus::STATUS_PENDING);
-            $order->setState(ParceladoOrderStatus::STATUS_PENDING);
+            $order->setState(Order::STATE_NEW);
             $order->addStatusHistoryComment(__('Transaction awaiting release.'), ParceladoOrderStatus::STATUS_PENDING);
             $order->save($order);
             $resultRedirect->setPath('sales/order/history');

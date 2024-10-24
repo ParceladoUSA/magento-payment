@@ -9,8 +9,8 @@ use Parceladousa\Payment\Helper\Data;
 
 class OrderObserver implements \Magento\Framework\Event\ObserverInterface
 {
-    /** 
-     * @var Data 
+    /**
+     * @var Data
      */
     private $_helperData;
 
@@ -39,15 +39,15 @@ class OrderObserver implements \Magento\Framework\Event\ObserverInterface
         try {
             $order = $observer->getEvent()->getOrder();
 
-    	    $model = $this->_parceladoStatusFactory->create();
-    	    $collection = $model->getCollection();
+            $model = $this->_parceladoStatusFactory->create();
+            $collection = $model->getCollection();
             $parceladoOrderStatus = $collection->addFieldToFilter('order_id', ['eq' => $order->getId()])->getFirstItem();
             if(empty($parceladoOrderStatus->getId())){
-                    $model = $this->_parceladoStatusFactory->create();
-                    $model->addData(['customer_id' => $order->getCustomerId(), 'order_id' => $order->getId(), 'status' => 'open', 'parcelado_order_id' => 'PARCELADOAPI']);
-                    $model->save();
+                $model = $this->_parceladoStatusFactory->create();
+                $model->addData(['customer_id' => $order->getCustomerId(), 'order_id' => $order->getId(), 'status' => 'open', 'parcelado_order_id' => 'PARCELADOAPI']);
+                $model->save();
 
-                    $this->_helperData->logger->info("New order created!".json_encode($model->getData()));
+                $this->_helperData->logger->info("New order created!".json_encode($model->getData()));
             }
         } catch (\Exception $e) {
             $this->_helperData->logger->error("Error on create order observer!".$e->getMessage());

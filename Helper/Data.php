@@ -8,6 +8,8 @@ use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Parceladousa\Payment\Logger\Logger;
+use Parceladousa\Payment\Model\Adminhtml\Source\ReferenceCurrency;
+use Parceladousa\Payment\Model\Adminhtml\Source\ReferenceValue;
 
 class Data extends AbstractHelper
 {
@@ -102,6 +104,48 @@ class Data extends AbstractHelper
     private function getEnvironment()
     {
         return $this->getConfigData('parcelado_payment', 'environment');
+    }
+
+    /**
+     * Return configured moment invoice order
+     *
+     * @return string
+     */
+    public function getMomentInvoiceOrder()
+    {
+        return $this->getConfigData('parcelado_payment', 'moment_invoice_order');
+    }
+
+    /**
+     * Return configured reference value
+     *
+     * @return string
+     */
+    public function getReferenceValue()
+    {
+        return $this->getConfigData('parcelado_payment', 'reference_value');
+    }
+
+    /**
+     * Return configured reference currency
+     *
+     * @return string
+     */
+    private function getReferenceCurrency()
+    {
+        return $this->getConfigData('parcelado_payment', 'reference_currency');
+    }
+
+    /**
+     * @return string
+     */
+    public function getStoreCurrencyCode()
+    {
+        if($this->getReferenceCurrency() == ReferenceCurrency::CURRENTCURRENCY) {
+            return $this->_storeManager->getStore()->getCurrentCurrencyCode();
+        }
+
+        return $this->_storeManager->getStore()->getBaseCurrencyCode();
     }
 
     /**

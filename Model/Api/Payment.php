@@ -69,9 +69,10 @@ class Payment implements PaymentInterface
 
         $accessToken = $this->_helper->getParceladoAccessToken();
         if (!empty($accessToken)) {
-            $currency = $this->_storeManager->getStore()->getCurrentCurrencyCode();
+            $currency = $this->_helper->getStoreCurrencyCode();
             $currency = (empty($currency) || ($currency != 'USD' || $currency != 'BRL')) ? 'USD' : $currency;
-            $rawData = ['amount' => $totals['grand_total'], 'currency' => $currency];
+            $amount = !empty($totals[$this->_helper->getReferenceValue()])? $totals[$this->_helper->getReferenceValue()] : $totals['grand_total'];
+            $rawData = ['amount' => $amount, 'currency' => $currency];
 
             $clientData = [
                 'name' => $customerData['firstname'] . ' ' . $customerData['lastname'],
@@ -152,15 +153,35 @@ class Payment implements PaymentInterface
 
                 $order = $this->_orderRepositoryInterface->get($parceladoOrderStatus->getOrderId());
 
-                if ($status == ParceladoOrderStatus::STATUS_DELIVERED) {
-                    /** Adiciona Fatura ao pedido */
-                    $invoice = $order->prepareInvoice()->register();
-                    $invoice->setOrder($order);
-                    $invoice->addComment(__('Values transfered by ParceladoUSA'));
-                    $order->addRelatedObject($invoice);
+                if ($status == ParceladoOrderStatus::STATUS_APPROVED) {
                     $order->setStatus(Order::STATE_PROCESSING);
                     $order->setState(Order::STATE_PROCESSING);
-                } else if (in_array($status, ParceladoOrderStatus::CODES_STATUS_ABORTED)) {
+
+                    if($this->_helper->getMomentInvoiceOrder() == $status) {
+                        /** Adiciona Fatura ao pedido */
+                        $invoice = $order->prepareInvoice()->register();
+                        $invoice->setOrder($order);
+                        $order->addRelatedObject($invoice);
+                        /** Fim da Fatura do pedido */
+                    }
+
+                    $order->addStatusHistoryComment(__('Values approved by ParceladoUSA.'), Order::STATE_PROCESSING);
+                }
+                if ($status == ParceladoOrderStatus::STATUS_DELIVERED) {
+                    $order->setStatus(Order::STATE_PROCESSING);
+                    $order->setState(Order::STATE_PROCESSING);
+
+                    if($this->_helper->getMomentInvoiceOrder() == $status) {
+                        /** Adiciona Fatura ao pedido */
+                        $invoice = $order->prepareInvoice()->register();
+                        $invoice->setOrder($order);
+                        $order->addRelatedObject($invoice);
+                        /** Fim da Fatura do pedido */
+                    }
+
+                    $order->addStatusHistoryComment(__('Values transfered by ParceladoUSA.'), Order::STATE_PROCESSING);
+                }
+                if (in_array($status, ParceladoOrderStatus::CODES_STATUS_ABORTED)) {
                     $order->setStatus(Order::STATE_CANCELED);
                     $order->setState(Order::STATE_CANCELED);
                     $order->addStatusHistoryComment(__('Transaction canceled or aborted by customer.'), Order::STATE_CANCELED);
