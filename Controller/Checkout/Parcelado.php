@@ -87,12 +87,8 @@ class Parcelado implements \Magento\Framework\App\ActionInterface
             $order->addStatusHistoryComment(__('Transaction canceled or aborted by customer.'), Order::STATE_CANCELED);
             $order->save($order);
             $resultRedirect->setPath('sales/order/history');
-        } else {
-            $order->setStatus(ParceladoOrderStatus::STATUS_PENDING);
-            $order->setState(Order::STATE_NEW);
-            $order->addStatusHistoryComment(__('Transaction awaiting release.'), ParceladoOrderStatus::STATUS_PENDING);
-            $order->save($order);
-            $resultRedirect->setPath('sales/order/history');
+        } else{
+            $resultRedirect->setPath('checkout/onepage/success');
         }
 
         return $resultRedirect;
