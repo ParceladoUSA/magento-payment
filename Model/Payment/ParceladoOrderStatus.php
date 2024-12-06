@@ -20,7 +20,8 @@ class ParceladoOrderStatus extends \Magento\Framework\Model\AbstractModel implem
 	 */
 	const CODES_STATUS_DELIVERY = [self::STATUS_APPROVED, self::STATUS_DELIVERED];
 	const CODES_STATUS_AUTHORIZED = [self::STATUS_OPEN, self::STATUS_PENDING, self::STATUS_PENDING];
-	const CODES_STATUS_ABORTED    = [self::STATUS_CANCELED, self::STATUS_ABORTED];
+	const CODES_STATUS_ABORTED    = [self::STATUS_ABORTED];
+	const CODES_STATUS_CANCELED    = [self::STATUS_CANCELED];
 
 	protected $_cacheTag = 'parcelado_order_status';
 

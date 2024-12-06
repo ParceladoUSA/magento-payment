@@ -10,6 +10,8 @@ use Parceladousa\Payment\Helper\Data as PaymentHelper;
 use Parceladousa\Payment\Model\Payment\ParceladoOrderStatus;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Api\OrderRepositoryInterface;
+use Magento\Sales\Model\Service\CreditmemoService;
+use Magento\Sales\Model\Order\CreditmemoFactory;
 
 /**
  * Class Payment
@@ -31,6 +33,12 @@ class Payment implements PaymentInterface
     /** @var OrderRepositoryInterface */
     private $_orderRepositoryInterface;
 
+    /** @var CreditmemoService  */
+    private $_creditmemoService;
+
+    /** @var CreditmemoFactory  */
+    private $_creditmemoFactory;
+
     /**
      * Payment api constructor
      *
@@ -39,13 +47,17 @@ class Payment implements PaymentInterface
      * @param StoreManagerInterface $storeManager
      * @param PaymentHelper $helper
      * @param OrderRepositoryInterface $orderRepositoryInterface
+     * @param CreditmemoFactory $creditmemoFactory
+     * @param CreditmemoService $creditmemoService
      */
     public function __construct(
         ParceladoOrderStatusFactory $parceladoStatusFactory,
         JsonHelper                  $jsonHelper,
         StoreManagerInterface       $storeManager,
         PaymentHelper               $helper,
-        OrderRepositoryInterface    $orderRepositoryInterface
+        OrderRepositoryInterface    $orderRepositoryInterface,
+        CreditmemoFactory           $creditmemoFactory,
+        CreditmemoService           $creditmemoService
     )
     {
         $this->_parceladoStatusFactory = $parceladoStatusFactory;
@@ -53,6 +65,8 @@ class Payment implements PaymentInterface
         $this->_storeManager = $storeManager;
         $this->_helper = $helper;
         $this->_orderRepositoryInterface = $orderRepositoryInterface;
+        $this->_creditmemoFactory = $creditmemoFactory;
+        $this->_creditmemoService = $creditmemoService;
     }
 
     /**
@@ -185,6 +199,19 @@ class Payment implements PaymentInterface
                     $order->setStatus(Order::STATE_CANCELED);
                     $order->setState(Order::STATE_CANCELED);
                     $order->addStatusHistoryComment(__('Transaction canceled or aborted by customer.'), Order::STATE_CANCELED);
+                }
+                if (in_array($status, ParceladoOrderStatus::CODES_STATUS_CANCELED)) {
+                    if($order->hasInvoices()) {
+                        $creditmemoFactory = $this->_creditmemoFactory->createByOrder($order);
+                        $this->_creditmemoService->refund($creditmemoFactory);
+                        $order->setStatus(Order::STATE_CANCELED);
+                        $order->setState(Order::STATE_CANCELED);
+                        $order->addStatusHistoryComment(__('Transaction refunded by ParceladoUSA.'), Order::STATE_CANCELED);
+                    } else {
+                        $order->setStatus(Order::STATE_CANCELED);
+                        $order->setState(Order::STATE_CANCELED);
+                        $order->addStatusHistoryComment(__('Transaction canceled by ParceladoUSA.'), Order::STATE_CANCELED);
+                    }
                 }
 
                 $this->_orderRepositoryInterface->save($order);
